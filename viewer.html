@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Статистика переходов</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f4f9; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; }
+        #stats-container { min-height: 100px; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .stat-box { background-color: #f0f8ff; padding: 20px; text-align: center; border-radius: 8px; }
+        .stat-box .number { font-size: 2.5em; font-weight: bold; color: #0056b3; }
+        .stat-box .label { font-size: 1em; color: #666; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Статистика переходов</h1>
+        <div id="stats-container"><p>Загрузка данных...</p></div>
+    </div>
+
+    <script>
+        const ntfyTopic = 'my_super_secret_stats_log_ab11';
+
+
+        async function loadStats() {
+            const statsContainer = document.getElementById('stats-container');
+            try {
+
+                const response = await fetch(`https://ntfy.sh/${ntfyTopic}/json`);
+                const data = await response.json();
+
+                if (!data.length) {
+                    statsContainer.innerHTML = '<p>Данных пока нет.</p>';
+                    return;
+                }
+
+                const totalRedirects = data.length;
+                const countryCounts = {};
+                
+                data.forEach(event => {
+                    const match = event.message.match(/Country: (.*)/);
+                    if (match && match[1]) {
+                        const country = match[1];
+                        countryCounts[country] = (countryCounts[country] || 0) + 1;
+                    }
+                });
+
+                const uniqueCountries = Object.keys(countryCounts).length;
+
+                const sortedCountries = Object.entries(countryCounts).sort(([,a],[,b]) => b-a);
+                let html = `
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="number">${totalRedirects}</div>
+                            <div class="label">Всего переходов</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="number">${uniqueCountries}</div>
+                            <div class="label">Уникальных стран</div>
+                        </div>
+                    </div>
+                    <h2>Переходы по странам</h2>
+                    <table>
+                        <thead><tr><th>Страна</th><th>Количество</th></tr></thead>
+                        <tbody>
+                            ${sortedCountries.map(([country, count]) => `<tr><td>${country}</td><td>${count}</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                `;
+                statsContainer.innerHTML = html;
+
+            } catch (error) {
+                statsContainer.innerHTML = `<p style="color: red;">Ошибка загрузки статистики: ${error.message}</p>`;
+            }
+        }
+
+        loadStats();
+    </script>
+</body>
+</html>

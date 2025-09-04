@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Перенаправление...</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding-top: 50px; }
+    </style>
+</head>
+<body>
+    <h1>Пожалуйста, подождите...</h1>
+    <p>Выполняется перенаправление.</p>
+
+    <script>
+        const linksFileName = 'links.txt';
+        const ntfyTopic = 'my_super_secret_stats_log_ab11';
+
+        const fallbackLink = 'https://www.google.com';
+
+
+        async function logAndRedirect() {
+            try {
+                const geoResponse = await fetch('https://ip-api.com/json/?fields=query,country');
+                const geoData = await geoResponse.json();
+                fetch(`https://ntfy.sh/${ntfyTopic}`, {
+                    method: 'POST',
+                    body: `IP: ${geoData.query}, Country: ${geoData.country}`
+                });
+            } catch (error) {
+                console.error("Ошибка при логировании:", error);
+            }
+
+            try {
+                const response = await fetch(linksFileName);
+                if (!response.ok) {
+                    // Если файл не найден (ошибка 404) или другая ошибка
+                    throw new Error(`Не удалось загрузить файл: ${response.statusText}`);
+                }
+                const text = await response.text();
+                
+
+                const links = text.split('\n')
+                                  .map(link => link.trim())
+                                  .filter(link => link);
+
+                if (links.length === 0) {
+                    throw new Error('Файл со ссылками пуст.');
+                }
+
+                // 3. Выбираем случайную ссылку и перенаправляем
+                const randomIndex = Math.floor(Math.random() * links.length);
+                const randomLink = links[randomIndex];
+                window.location.replace(randomLink);
+
+            } catch (error) {
+                console.error("Критическая ошибка (редирект):", error);
+                // Если что-то пошло не так, перенаправляем на запасную ссылку
+                window.location.replace(fallbackLink);
+            }
+        }
+
+        logAndRedirect();
+    </script>
+</body>
+</html>
